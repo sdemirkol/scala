@@ -1,0 +1,7 @@
+POST 	/insert							controllers.admin.Employee.insert
+GET		/employee						controllers.admin.Employee.save
+GET		/update/:id						controllers.admin.Employee.update(id:Long)
+POST	/updateput						controllers.admin.Employee.updatePut
+
+
+GET      /content/*file                   controllers.admin.Assets.at(path="/public/admin", file)

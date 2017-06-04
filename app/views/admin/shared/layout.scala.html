@@ -1,0 +1,11 @@
+@(title:String)(content:Html)(implicit request:RequestHeader)
+<html>
+<head>
+	<title>@title</title>
+</head>
+<body>
+	@controllers.admin.LayoutRender.header(request)	
+	@controllers.admin.LayoutRender.sideBar(request)
+	@content
+</body>
+</html>

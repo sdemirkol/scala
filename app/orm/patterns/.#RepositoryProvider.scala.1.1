@@ -1,0 +1,99 @@
+package orm.patterns
+
+import orm.entities.BaseTable
+import slick.lifted.CanBeQueryCondition
+import scala.concurrent.Future
+import slick.lifted.Rep
+import slick.driver.MySQLDriver.api._
+import scala.reflect.{ ClassTag, classTag }
+import orm.entities.BaseEntity
+import slick.driver.MySQLDriver
+import java.sql.Driver
+import slick.driver.JdbcProfile
+import play.api.db.slick._
+import orm.entities._
+
+trait BaseRepositoryComponent[T <: BaseTable[E], E <: BaseEntity] {
+  def getById(id: Long): Future[Option[E]]
+  def getAll: Future[Seq[E]]
+  def filter[C <: Rep[_]](expr: T => C)(implicit wt: CanBeQueryCondition[C]): Future[Seq[E]]
+  def save(row: E): Future[E]
+  def deleteById(id: Long): Future[Int]
+  def updateById(id: Long, row: E): Future[Int]
+}
+
+trait BaseRepositoryQuery[T <: BaseTable[E], E <: BaseEntity] {
+  val query: TableQuery[T]
+
+  def getByIdQuery(id: Long) = {
+    //.filter(_.IsDeleted === false)
+    query.filter(_.ID === id)    
+  }
+
+  def getAllQuery = {
+    //.filter(_.IsDeleted === false)
+    query        
+  }
+
+  def filterQuery[C <: Rep[_]](expr: T => C)(implicit wt: CanBeQueryCondition[C]) = {
+    //.filter(_.IsDeleted === false)
+    query.filter(expr)      
+  }
+
+  def saveQuery(row: E) = {
+    query returning query += row
+  }
+
+  def deleteByIdQuery(id: Long) = {
+    //query.filter(_.ID === id).map(_.IsDeleted).update(true)
+    query.filter(_.ID === id).delete
+  }
+
+  def updateByIdQuery(id: Long, row: E) = {
+    /*.filter(_.IsDeleted === false)*/
+    query.filter(_.ID === id).update(row)
+  }
+}
+
+class GenericRepository[E <: BaseEntity: ClassTag, T <: BaseTable[E]](config: DatabaseConfigProvider, clazz: TableQuery[T])
+    extends BaseRepositoryQuery[T, E] with BaseRepositoryComponent[T, E] {
+  val clazzTable: TableQuery[T] = clazz
+  lazy val clazzEntity = classTag[E].runtimeClass
+  val query: TableQuery[T] = clazz
+  val db = config.get.db
+
+  def getAll: Future[Seq[E]] = {
+    db.run(getAllQuery.result)
+  }
+
+  def getById(id: Long): Future[Option[E]] = {
+    db.run(getByIdQuery(id).result.headOption)
+  }
+
+  def filter[C <: Rep[_]](expr: T => C)(implicit wt: CanBeQueryCondition[C]) = {
+    db.run(filterQuery(expr).result)
+  }
+
+  
+  def save(row: E) = {
+    db.run(saveQuery(row))
+  }
+
+  def updateById(id: Long, row: E) = {
+    db.run(updateByIdQuery(id, row))
+  }
+
+  def deleteById(id: Long) = {
+    db.run(deleteByIdQuery(id))
+  }
+}
+
+class RepositoryProvider (config: DatabaseConfigProvider) {
+  /*val User = new GenericRepository[UserET, UserTable](config, TableQuery[UserTable])*/
+  val Log = new GenericRepository[LogET, LogTable](config, TableQuery[LogTable])
+  val FrontMenu = new GenericRepository[FrontMenuET, FrontMenuTable](config, TableQuery[FrontMenuTable])
+  val Banner = new GenericRepository[BannerET, BannerTable](config, TableQuery[BannerTable])
+  val Category = new GenericRepository[CategoryET, CategoryTable](config, TableQuery[CategoryTable])
+  val Meal = new GenericRepository[MealET, MealTable](config, TableQuery[MealTable])
+  val DynamicContent = new GenericRepository[DynamicContentET, DynamicContentTable](config, TableQuery[DynamicContentTable]) 
+}
